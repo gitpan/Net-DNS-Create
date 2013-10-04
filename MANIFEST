@@ -17,4 +17,3 @@ t/good/route53.pl
 t/good/test_example.com.zone
 t/good/test_master.conf
 META.yml
-META.json
