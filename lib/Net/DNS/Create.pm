@@ -1,9 +1,9 @@
-#  Copyright (c) 2011-2013 David Caldwell,  All Rights Reserved.
+#  Copyright (c) 2011-2014 David Caldwell,  All Rights Reserved.
 
 package Net::DNS::Create;
 use strict; use warnings;
 
-our $VERSION='0.10.0';
+our $VERSION='0.11.0';
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -196,6 +196,12 @@ Net::DNS::Create - Create DNS configurations from a nice Perl structure based DS
    'e' => { txt => ["v=spf1 mx -all",         # use an array for multiple TXTs
                     "another different text record" ] },
 
+   '_carddavs._tcp' => { srv => { "www"  => { port => 443 },
+                                              # priority & weight default to 0
+                                  "www2" => { port => 443,
+                                              priority => 2,
+                                              weight   => 3 }, } },
+
    'server' => { rp => ['david@example.com', david.people] },
  };
 
@@ -285,7 +291,7 @@ David Caldwell E<lt>david@porkrind.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2009-2013 by David Caldwell
+Copyright (C) 2009-2014 by David Caldwell
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.12.4 or,

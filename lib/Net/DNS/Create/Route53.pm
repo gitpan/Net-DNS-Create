@@ -1,4 +1,4 @@
-#  Copyright (c) 2013 David Caldwell,  All Rights Reserved.
+#  Copyright (c) 2013-2014 David Caldwell,  All Rights Reserved.
 
 package Net::DNS::Create::Route53;
 use feature ':5.10';
@@ -29,7 +29,8 @@ sub hosted_zone($) {
 }
 
 sub txt(@) {
-    map { "\"$_\"" } @_;
+    map { s/[^-a-zA-Z0-9._='():;* ]/$& eq '"' ? '\\"' : sprintf("\\%03o", ord($&))/ge;
+        "\"$_\"" } @_;
 }
 
 sub group_by_type_and_name($$) {
@@ -204,7 +205,7 @@ David Caldwell E<lt>david@porkrind.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2009-2013 by David Caldwell
+Copyright (C) 2009-2014 by David Caldwell
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.12.4 or,

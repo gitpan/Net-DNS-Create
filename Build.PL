@@ -3,14 +3,6 @@ use strict;
 use warnings FATAL => 'all';
 use Module::Build;
 
-if (-d ".git") { # Are we in our development tree? If so, create MANIFEST.
-    my ($dir, $manifest);
-    open $manifest, ">", "MANIFEST" or die "MANIFEST: $!";
-    print $manifest "MANIFEST\n";
-    open $dir, '-|', 'git', 'ls-files' or die "Couldn't run git: $!";
-    while (<$dir>) { print $manifest $_ }
-}
-
 my $builder = Module::Build->new(
     module_name         => 'Net::DNS::Create',
     license             => 'perl',
@@ -22,13 +14,30 @@ my $builder = Module::Build->new(
     },
     build_requires => {
         'Test::More' => 0,
+        'File::Slurp' => 0,
     },
     requires => {
+        'perl'                 => '5.10.0', # I use // indiscriminately.
         'Hash::Merge::Simple'  => 0,
         'Net::DNS'             => '0.72',
         'Net::Amazon::Route53' => 0,
         'LWP::Protocol::https' => 0, # Should probably be required by Net::Amazon::Route53
     },
 );
+
+
+if (-d ".git") { # Are we in our development tree? If so, create MANIFEST.
+    my ($dir, $manifest);
+    open $manifest, ">", "MANIFEST" or die "MANIFEST: $!";
+    print $manifest "MANIFEST\n";
+    open $dir, '-|', 'git', 'ls-files' or die "Couldn't run git: $!";
+    while (<$dir>) { print $manifest $_ }
+
+    # Also, create a cpanfile so we can use carton for development
+    my $cf;
+    open $cf, '>', 'cpanfile' or die "Couldn't create cpanfile";
+    print $cf "requires '$_';\n"
+        for (map { keys %{$builder->prereq_data->{$_}} } keys %{$builder->prereq_data});
+}
 
 $builder->create_build_script();
