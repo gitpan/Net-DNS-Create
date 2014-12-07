@@ -3,7 +3,7 @@
 package Net::DNS::Create;
 use strict; use warnings;
 
-our $VERSION='0.11.0';
+our $VERSION='1.0.0';
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -57,12 +57,27 @@ sub interval($) {
     $_[0] =~ /(\d+)([hmsdw])/ && $1 * { s=>1, m=>60, h=>3600, d=>3600*24, w=>3600*24*7 }->{$2} || $_[0];
 }
 
+sub escape($) {
+    my $s = shift;
+    # Net::DNS::RR::TXT interpolates \xxx style octally encoded escapes. We don't want this so we escape the \s
+    $s =~ s/\\/\\\\/g;
+    $s;
+}
+
 sub txt($) {
     my ($t) = @_;
-    return "$t" if length $t < 255;
+    return escape($t) if length $t < 255;
     my @part;
-    push @part, $1 while ($t =~ s/^(.{255})//);
+    push @part, escape($1) while ($t =~ s/^(.{255})//);
     (@part, $t);
+}
+
+
+sub arrayize($) { # [1,2,3,4] -> (1,2,3,4), 1 -> (1)
+    (ref $_[0] eq 'ARRAY' ? @{$_[0]} : $_[0])
+}
+sub arrayize2($) { # [[1,2],[3,4]] -> ([1,2],[3,4]), [1,2] -> ([1,2])
+    (ref $_[0] eq 'ARRAY' && ref $_[0]->[0] eq 'ARRAY' ? @{$_[0]} : $_[0])
 }
 
 use Hash::Merge::Simple qw(merge);
@@ -84,13 +99,9 @@ sub domain($@) {
                               my %common = (name => $fqdn,
                                             ttl => $ttl,
                                             type => uc $rr);
-                              $rr eq 'a' || $rr eq 'cname' || $rr eq 'rp' || $rr eq 'soa' ?
+                              $rr eq 'cname' || $rr eq 'soa' ?
                                   Net::DNS::RR->new(%common,
-                                                    $rr eq 'a'     ? (address       => $val) :
                                                     $rr eq 'cname' ? (cname         => full_host($val, $fq_domain)) :
-                                                    #$rr eq 'txt'   ? (char_str_list => [txt($val)]) :
-                                                    $rr eq 'rp'    ? (mbox          => email($val->[0]),
-                                                                      txtdname      => full_host($val->[1], $fq_domain)) :
                                                     $rr eq 'soa'   ? (mname         => full_host($val->{primary_ns}, $domain),
                                                                       rname         => $val->{rp_email},
                                                                       serial        => $val->{serial} // 0,
@@ -100,9 +111,14 @@ sub domain($@) {
                                                                       minimum       => interval($val->{min_ttl})) :
                                                     die "can't happen") :
 
-                              $rr eq 'txt' ? map { Net::DNS::RR->new(%common, char_str_list => [txt($_)]) } sort {$a cmp $b} (ref $val eq 'ARRAY' ? @{$val} : $val) :
+                              $rr eq 'a'   ? map { Net::DNS::RR->new(%common, address       => $_)} sort(arrayize($val)) :
+
+                              $rr eq 'rp'  ? map { Net::DNS::RR->new(%common, mbox          => email($_->[0]),
+                                                                              txtdname      => full_host($_->[1], $fq_domain)) } sort(arrayize2($val)) :
+
+                              $rr eq 'txt' ? map { Net::DNS::RR->new(%common, char_str_list => [txt($_)]) } sort {$a cmp $b} arrayize($val) :
                               $rr eq 'mx'  ? map { Net::DNS::RR->new(%common, preference => $_, exchange => full_host($val->{$_}, $fq_domain)) } sort(keys %$val) :
-                              $rr eq 'ns'  ? map { Net::DNS::RR->new(%common, nsdname => $_) } sort(@$val) :
+                              $rr eq 'ns'  ? map { Net::DNS::RR->new(%common, nsdname => $_) } sort(arrayize($val)) :
                               $rr eq 'srv' ? map {
                                                 my $target = $_;
                                                 map {
@@ -173,6 +189,8 @@ Net::DNS::Create - Create DNS configurations from a nice Perl structure based DS
  # The different records Types:
  domain "example.com", {
    'www' => { a => '127.0.0.1' },            # names are non-qualified
+   'www1' => { a => ['127.0.0.2',
+                     '127.0.0.3'] },         # Use an array for multiple As
 
    'www2' => { cname => 'www' },             # no trailing dot for local names
    'www2' => { cname => '@' },               # @ is supported
@@ -203,6 +221,9 @@ Net::DNS::Create - Create DNS configurations from a nice Perl structure based DS
                                               weight   => 3 }, } },
 
    'server' => { rp => ['david@example.com', david.people] },
+
+   'server2' => { rp => [['david@example.com', david.people] # use an array for
+                         ['bob@example.com', bob.people]] }, # multiple RPs
  };
 
  # Multiple record types for a name

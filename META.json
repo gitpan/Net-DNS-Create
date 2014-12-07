@@ -38,7 +38,7 @@
    "provides" : {
       "Net::DNS::Create" : {
          "file" : "lib/Net/DNS/Create.pm",
-         "version" : "v0.11.0"
+         "version" : "v1.0.0"
       },
       "Net::DNS::Create::Bind" : {
          "file" : "lib/Net/DNS/Create/Bind.pm"
@@ -56,5 +56,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "v0.11.0"
+   "version" : "v1.0.0"
 }
